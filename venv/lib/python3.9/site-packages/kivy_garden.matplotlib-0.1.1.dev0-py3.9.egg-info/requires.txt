@@ -1,0 +1,12 @@
+matplotlib>=3.7.2
+kivy>=2.1.0
+
+[ci]
+coveralls
+pycodestyle
+
+[dev]
+pytest>=3.6
+pytest-cov
+pytest-asyncio
+sphinx_rtd_theme
