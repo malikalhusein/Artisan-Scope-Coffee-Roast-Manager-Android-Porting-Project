@@ -1,1 +1,29 @@
+# Virtual Environments
 venv/
+env/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# IDEs
+.vscode/
+.idea/
+
+# Local logs/data
+*.alog
+*.csv
+*.aset
+docs/*.png
+docs/*.webp
+!docs/ui_main.png
+!docs/ui_config.png
+!docs/ui_curves.png
