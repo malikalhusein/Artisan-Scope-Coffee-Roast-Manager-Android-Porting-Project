@@ -1309,14 +1309,14 @@
 
                 if (payload.connected === false) {
                   document.getElementById('conn-status').textContent = payload.message || 'MODBUS disconnected';
-                  document.getElementById('conn-status').className = 'brand-status';
+                  document.getElementById('conn-status').className = 'brand-status err';
                 } else if (payload.connected === true && isConnected && !isDemo) {
                   document.getElementById('conn-status').textContent = 'LIVE — Connected to Gateway';
                   document.getElementById('conn-status').className = 'brand-status ok';
                 }
               } else if (payload.type === 'status') {
                 document.getElementById('conn-status').textContent = payload.message;
-                document.getElementById('conn-status').className = payload.connected ? 'brand-status ok' : 'brand-status';
+                document.getElementById('conn-status').className = payload.connected ? 'brand-status ok' : 'brand-status err';
               }
             } catch (err) { }
           };
@@ -1596,8 +1596,8 @@
         // Divs and Modes are not exposed for extra channels in this UI, keep defaults
       }
       cfg.wordorderLittle = (v('d-endian') === 'little');
-      cfg.sample = +v('d-sample');
-      const ymin = +v('y-min'), ymax = +v('y-max'), rmin = +v('yr-min'), rmax = +v('yr-max');
+      cfg.sample = +v('d-sample', 1);
+      const ymin = +v('y-min', 0), ymax = +v('y-max', 300), rmin = +v('yr-min', 0), rmax = +v('yr-max', 50);
       chart.options.scales.yT.min = ymin; chart.options.scales.yT.max = ymax;
       chart.options.scales.yR.min = rmin; chart.options.scales.yR.max = rmax;
       chart.update();
@@ -1690,8 +1690,14 @@
     // ─────────────────────────────────────────
     // UTILS
     // ─────────────────────────────────────────
-    function v(id) { return document.getElementById(id).value }
-    function sv(id, val) { document.getElementById(id).value = val }
+    function v(id, def = '') {
+      const el = document.getElementById(id);
+      return el ? el.value : def;
+    }
+    function sv(id, val) {
+      const el = document.getElementById(id);
+      if (el) el.value = val;
+    }
     function dl(content, name, type) {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([content], { type }));
