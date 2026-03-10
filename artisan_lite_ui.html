@@ -1101,6 +1101,12 @@
           <button class="ftn ftnld" onclick="document.getElementById('load-aset').click()">📂 Load .aset</button>
           <input type="file" id="load-aset" accept=".aset,.ini,.cfg" style="display:none" onchange="loadAset(this)" />
         </div>
+        <div class="chk-row" style="background:rgba(255,23,68,.05);padding:8px;border-radius:4px;margin-top:10px">
+          <p style="font-size:9px;color:var(--red);line-height:1.2">
+            ⚠️ <b>Note:</b> Seandainya tombol tidak merespon, mohon "Force Refresh" browser (Ctrl+F5 / Cmd+Shift+R)
+            untuk membersihkan cache versi lama.
+          </p>
+        </div>
         <div class="btn-group">
           <button class="ftn ftncnl" onclick="closeConfig()">Cancel</button>
           <button class="ftn ftnok" onclick="applyConfig()">OK / Apply</button>
@@ -1639,12 +1645,29 @@
       const file = input.files[0]; if (!file) return;
       const reader = new FileReader();
       reader.onload = e => {
-        const lines = e.target.result.split('\n');
-        const map = {};
-        lines.forEach(l => {
-          const m = l.match(/^\s*([^=\[#]+?)\s*=\s*(.+?)\s*$/);
-          if (m) map[m[1].trim().toLowerCase()] = m[2].trim();
-        });
+        let content = e.target.result;
+        let map = {};
+
+        // Try parsing as JSON first (some Artisan versions)
+        try {
+          const json = JSON.parse(content);
+          // If it's a flat Artisan settings object, map it
+          for (const k in json) map[k.toLowerCase()] = String(json[k]);
+        } catch (err) {
+          // Fallback to INI parsing
+          content.split('\n').forEach(l => {
+            const m = l.match(/^\s*([^=\[#\0]+?)\s*=\s*(.+?)\s*$/);
+            if (m) map[m[1].trim().toLowerCase()] = m[2].trim();
+          });
+        }
+
+        // Helper to parse arrays like [1, 2, 3] or "1, 2, 3"
+        function parseArr(key) {
+          let s = map[key]; if (!s) return null;
+          s = s.replace(/[\[\]"]/g, ''); // Remove brackets and quotes
+          return s.split(',').map(x => x.trim());
+        }
+
         // Artisan-compatible key parsing
         if (map['modbustype']) { sv('c-type', map['modbustype']); cfg.type = +map['modbustype']; }
         if (map['modbushost']) { sv('c-host', map['modbushost']); cfg.host = map['modbushost']; }
@@ -1652,21 +1675,17 @@
         if (map['modbuswsport']) { sv('c-ws-port', map['modbuswsport']); cfg.wsPort = +map['modbuswsport']; }
         if (map['modbustimeout']) { sv('c-timeout', map['modbustimeout']); cfg.timeout = +map['modbustimeout']; }
         if (map['modbusretries']) { sv('c-retries', map['modbusretries']); cfg.retries = +map['modbusretries']; }
-        if (map['modbuswordorderlittle']) { sv('d-endian', map['modbuswordorderlittle'] === '1' ? 'little' : 'big'); cfg.wordorderLittle = map['modbuswordorderlittle'] === '1'; }
+        const wo = map['modbuswordorderlittle'];
+        if (wo) { sv('d-endian', wo === '1' || wo === 'true' ? 'little' : 'big'); cfg.wordorderLittle = (wo === '1' || wo === 'true'); }
         if (map['samplerate']) { sv('d-sample', map['samplerate']); cfg.sample = +map['samplerate']; }
-        // Parse channel arrays: modbusinputids = [1,2,0,...]
-        function parseArr(key) {
-          const s = map[key]; if (!s) return null;
-          const m2 = s.match(/\[([^\]]+)\]/);
-          return m2 ? m2[1].split(',').map(x => x.trim().replace(/"/g, '')) : null;
-        }
+
         const ids = parseArr('modbusinputids'), regs = parseArr('modbusinputregisters');
         const codes = parseArr('modbusinputcodes'), divs = parseArr('modbusinputdivs');
         const modes = parseArr('modbusinputmodes');
 
         if (ids) { cfg.inputDeviceIds = ids.map(Number); sv('d-ch1-dev', ids[0]); sv('d-ch2-dev', ids[1]); for (let i = 2; i < 10; i++) sv(`d-ch${i + 1}-dev`, ids[i] || 0); }
         if (regs) { cfg.inputRegisters = regs.map(Number); sv('d-ch1-reg', regs[0]); sv('d-ch2-reg', regs[1]); for (let i = 2; i < 10; i++) sv(`d-ch${i + 1}-reg`, regs[i] || 0); }
-        if (codes) { cfg.inputCodes = codes.map(Number); sv('d-ch1-fc', codes[0]); sv('d-ch2-fc', codes[1]); for (let i = 2; i < 10; i++) sv(`d-ch${i + 1}-fc`, codes[i] || 3); } // Default to FC03 for extra
+        if (codes) { cfg.inputCodes = codes.map(Number); sv('d-ch1-fc', codes[0]); sv('d-ch2-fc', codes[1]); for (let i = 2; i < 10; i++) sv(`d-ch${i + 1}-fc`, codes[i] || 3); }
         if (divs) { cfg.inputDivs = divs.map(Number); sv('d-ch1-div', divs[0]); sv('d-ch2-div', divs[1]); }
         if (modes) { cfg.inputModes = modes; sv('d-ch1-mode', modes[0]); sv('d-ch2-mode', modes[1]); }
 

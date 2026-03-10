@@ -96,3 +96,15 @@ Jika Anda ingin mengubah nomor register atau IP address:
 | Suhu di grafik `---` | Cek apakah HG553 sudah menyala dan tablet terhubung ke Wi-Fi-nya. |
 | Tombol event tidak merespon | Pastikan Anda sudah klik **ON** dan **START** terlebih dahulu. |
 | Error di Pydroid | Pastikan sudah install `pymodbus` dan `websockets` di menu Pip. |
+| Grafik tidak muncul (**Offline**) | Pastikan folder `libs/` berisi `chart.js` sudah dipindah ke tablet. |
+| UI Terasa "Nge-Bug" | Lakukan **Force Refresh** di Chrome (Cmd+Shift+R atau Ctrl+F5) untuk hapus cache versi lama. |
+
+---
+
+### 🚀 Tips Tambahan: Modus Simulasi (Tanpa Hardware)
+Jika Anda ingin mengetes koneksi tablet ke backend tanpa menyalakan mesin roasting:
+1. Di Pydroid 3, jalankan perintah ini di Terminal:
+   ```bash
+   python3 modbus_to_ws.py --simulate
+   ```
+2. Buka UI di Chrome. Status akan berubah menjadi **LIVE — Connected to Gateway** dan data suhu akan mengalir otomatis meskipun mesin mati. Ini berguna untuk memastikan "jalur pipa" data dari Python ke Chrome sudah lancar.
