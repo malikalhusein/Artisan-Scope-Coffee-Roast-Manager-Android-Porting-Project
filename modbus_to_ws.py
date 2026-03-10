@@ -71,10 +71,17 @@ DEFAULT_SAMPLE_INTERVAL = 1.0  # seconds
 
 # Artisan channels: inputDeviceIds, inputRegisters, inputCodes, inputDivs
 # Channel 0 = ET, Channel 1 = BT (matches canvas.py / modbusport.py)
+# Note: 'div' here refers to the INDEX sent by the UI (0=none/1, 1=÷10, 2=÷100)
 CHANNELS = [
-    {"name": "ET", "device_id": 1, "register": 1000, "fc": 4, "div": 10},
-    {"name": "BT", "device_id": 2, "register": 1000, "fc": 4, "div": 10},
+    {"name": "ET", "device_id": 1, "register": 1000, "fc": 4, "div": 0},
+    {"name": "BT", "device_id": 2, "register": 1000, "fc": 4, "div": 0},
 ]
+
+def get_divisor(div_index: int) -> int:
+    """Map UI divider index to actual numeric divisor."""
+    if div_index == 1: return 10
+    if div_index == 2: return 100
+    return 1 # default for index 0 or invalid indices
 
 # ── Shared State ───────────────────────────────────────────────────────────────
 class AppState:
@@ -191,8 +198,11 @@ async def modbus_reader_loop(args):
                     bt_raw, bt_status = await read_register(client, CHANNELS[1]["device_id"], CHANNELS[1]["register"], CHANNELS[1]["fc"])
 
                     if et_raw is not None and bt_raw is not None:
-                        state.last_et = round(et_raw / CHANNELS[0]["div"], 1)
-                        state.last_bt = round(bt_raw / CHANNELS[1]["div"], 1)
+                        # Use mapped divisors
+                        div0 = get_divisor(CHANNELS[0]["div"])
+                        div1 = get_divisor(CHANNELS[1]["div"])
+                        state.last_et = round(et_raw / div0, 1)
+                        state.last_bt = round(bt_raw / div1, 1)
                         state.error_count = 0
                         state.et_history.append(state.last_et)
                         state.bt_history.append(state.last_bt)
