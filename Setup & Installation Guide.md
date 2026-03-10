@@ -1,9 +1,10 @@
 # 🛠️ Setup & Installation Guide: Artisan-Lite
-*Raga Roastery IoT Modbus Gateway — v2 (HTML/WebView Edition)*  
+*Raga Roastery IoT Modbus Gateway — v2 (HTML/WebView Edition)*
 *Last Updated: 2026-03-10*
 
 ---
 
+<<<<<<< HEAD
 ## 🌟 TL;DR — Cara Tercepat Preview UI
 
 ```bash
@@ -229,3 +230,156 @@ Jika ingin menjalankan backend Python (`modbus_to_ws.py`) di tablet:
 | Chart tidak update | Refresh halaman, tekan RESET lalu ON → START lagi |
 | File .aset tidak terbaca | Pastikan format file benar — key `modbushost` harus ada |
 | Grafik tidak smooth di tablet | Kurangi sampling rate dari 1s ke 2s di Device Assignment |
+=======
+## 🚨 Baca Ini Dulu — Status Proyek Saat Ini
+
+Ada **dua skenario** penggunaan, dan ini penting kamu pahami sebelum mulai:
+
+| Skenario | Status | Keterangan |
+|---|---|---|
+| **A — UI + Demo Mode** | ✅ Siap dipakai | Semua fitur UI, grafik simulasi, save/load log & config |
+| **B — Live Data dari Mesin** | ✅ Siap dipakai | Baca ET & BT nyata dari mesin via Pydroid + WebSocket |
+
+> **Jujurnya**: Untuk Demo Mode (tanpa mesin), UI bisa dijalankan langsung dari Chrome. Untuk **Live Data dari mesin nyata**, Anda harus mensimulasikan "Backend" dengan menjalankan satu script Python (`modbus_to_ws.py`) di background tablet (menggunakan Pydroid 3) agar Chrome bisa menerima data Modbus.
+
+---
+
+## ☕ SKENARIO A — "Mau Roasting Hari Ini" (UI Ready, Data Simulasi)
+
+> Gunakan skenario ini **sekarang**. Kamu bisa catat semua event, lihat grafik fase, dan save log — dengan data simulasi sebagai referensi visual.
+
+### Step 1: Nyalakan Perangkat
+1. Nyalakan **mesin roasting** — pastikan thermocouple ET & BT terpasang
+2. Colokkan **USB-RS485 adapter** dari mesin ke port USB **Huawei HG553**
+3. Nyalakan **Huawei HG553** → tunggu boot selesai (~60 detik, lampu Wi-Fi menyala)
+
+### Step 2: Sambungkan Tablet ke Wi-Fi
+1. Buka **Pengaturan → Wi-Fi** di Infinix XPad
+2. Sambungkan ke jaringan Wi-Fi yang sama dengan HG553
+3. *(Opsional verifikasi)*: buka Chrome → ketik `http://192.168.11.3` — jika halaman terbuka, gateway aktif ✅
+
+### Step 3: Buka Artisan-Lite di Tablet
+
+**One-time setup** (pertama kali saja): transfer file ke tablet dulu:
+```
+Macbook → Google Drive → upload artisan_lite_ui.html
+Tablet  → Google Drive → download ke /sdcard/Download/
+```
+
+Selanjutnya, setiap kali mau roasting:
+1. Buka **Chrome** di tablet
+2. Di address bar ketik: `file:///sdcard/Download/artisan_lite_ui.html`
+3. UI terbuka → siap digunakan!
+
+   > 💡 **Tips**: Buka menu Chrome ⋮ → **"Add to Home Screen"** → nanti bisa buka dari layar utama tablet seperti aplikasi biasa.
+
+### Step 4: Konfigurasi (Hanya Perlu Sekali)
+1. Ketuk **CONFIG ⚙️** di top bar
+2. Tab **Modbus / TCP**:  
+   Host: `192.168.11.3` | Port: `5000` | Timeout: `1.0` | Type: `TCP`
+3. Tab **Device Assignment**:  
+   Ch.1 (ET): Unit ID=`1`, Register=`1000`, FC=`FC04`, Divider=`1÷10`, Mode=`C`  
+   Ch.2 (BT): Unit ID=`2`, Register=`1000`, FC=`FC04`, Divider=`1÷10`, Mode=`C`
+4. Klik **💾 Save .aset** → simpan config (cukup sekali, load lagi kapan pun)
+5. Klik **OK / Apply**
+
+### Step 5: Roasting! 🔥
+
+```
+Urutan tombol saat roasting:
+
+[ON]         → Aktifkan (demo mode = simulasi data)
+[START]      → Mulai timer & rekam
+
+↓ Saat masukkan biji ke mesin:
+[CHARGE]     → timeindex[0] — fase drying mulai dihitung
+
+↓ ~4–8 menit (suhu BT ~160–170°C):
+[DRY END]    → timeindex[1] — Phases LCD: DRYING timer muncul
+
+↓ Saat dengar first crack:
+[FC START]   → timeindex[2] — Phases LCD: MAILLARD timer muncul
+[FC END]     → timeindex[3]
+
+↓ (Opsional, jika roast lebih gelap):
+[SC START]   → timeindex[4]
+[SC END]     → timeindex[5]
+
+↓ Saat buang biji ke cooling tray:
+[DROP]       → timeindex[6] — Phases LCD: DEV timer muncul
+
+↓ Setelah cooling selesai:
+[COOL]       → timeindex[7]
+
+[STOP]       → Hentikan rekaman
+```
+
+**Perhatikan sidebar kanan** — Phases LCD akan otomatis menampilkan:
+- `DRYING` — durasi dari CHARGE ke DRY END
+- `MAILLARD` — durasi dari DRY END ke FC START
+- `DEV` — durasi dari FC START ke DROP
+
+### Step 6: Simpan Log
+1. Tekan **LOG 💾** di top bar
+2. Dua file terdownload otomatis:
+   - `.alog` — kompatibel dengan Artisan Desktop (untuk analisis lanjut)
+   - `.csv` — untuk Excel / Google Sheets
+3. *(Opsional)*: copy file `.alog` ke Macbook → buka di Artisan Desktop
+
+---
+
+## 🖥️ Paralel: Artisan Desktop di Macbook (Live Data Sekarang)
+
+Sambil menunggu Sprint 6 selesai, **Artisan Desktop sudah langsung bisa** baca live data ET & BT dari mesin:
+
+1. Pastikan Macbook terhubung ke Wi-Fi yang sama
+2. Buka Artisan → **Config → Ports → Modbus**:
+   - Type: `TCP` | Host: `192.168.11.3` | Port: `5000`
+   - Input 1 (ET): Device=1, Reg=1000, FC=4, Mode=C
+   - Input 2 (BT): Device=2, Reg=1000, FC=4, Mode=C
+3. Tekan **ON** → Artisan Desktop mulai baca suhu langsung dari mesin ✅
+
+> File `.aset` yang disave dari Artisan-Lite juga bisa di-load ke Artisan Desktop (dan sebaliknya) karena format key-nya sudah kompatibel.
+
+---
+
+## � SKENARIO B — Live Data Langsung ke Tablet (Hari H Roasting)
+
+Ini adalah cara kerja nyata di mana tablet akan membaca suhu ET & BT aktual dari mesin.
+
+### Prerequisite: Install Pydroid 3
+Karena Chrome Android tidak bisa membaca Modbus TCP secara native, kita butuh "Jembatan WebSocket" dari Python.
+1. Install **Pydroid 3** dari Google Play Store di tablet
+2. Buka Pydroid → Menu ≡ → **Pip** → Install: `pymodbus` dan `websockets`
+3. Copy **`modbus_to_ws.py`** ke memori tablet bersama dengan `artisan_lite_ui.html`
+
+### Step 1: Jalankan Backend (Bridge)
+1. Nyalakan mesin roasting & Gateway Huawei HG553
+2. Buka **Pydroid 3** di tablet
+3. Buka file `modbus_to_ws.py`
+4. Tekan tombol ▶️ Play kuning besar.
+5. Akan muncul teks di terminal Pydroid: `Memulai WebSocket... Menghubungkan ke Modbus...`
+   Biarkan Pydroid berjalan di background. (Jangan di-swipe close/force close).
+
+### Step 2: Buka UI
+1. Buka **Chrome** di tablet
+2. Buka `file:///sdcard/Download/artisan_lite_ui.html`
+3. Tekan **ON**
+4. Status akan berubah menjadi **LIVE — Connected to Gateway** (Warna hijau).
+5. Selesai! Saat ditekan START, grafik akan langsung merender suhu benda nyata dari mesin Anda.
+
+> Jika backend mati atau terputus secara tiba-tiba saat roasting, UI tidak akan crash. UI akan menampilkan **"MODBUS disconnected — retrying..."** dan beralih ke warna fallback otomatis.
+
+---
+
+## 🔧 Troubleshooting
+
+| Masalah | Solusi |
+|---|---|
+| File HTML tidak terbuka di Chrome | Coba ketik alamat manual di address bar: `file:///sdcard/Download/artisan_lite_ui.html` |
+| Suhu tampil `---` (tapi itu normal!) | Normal untuk saat ini — data simulasi berjalan setelah klik ON → START |
+| Modal Config tidak menutup | Refresh halaman Chrome, buka ulang |
+| File .aset tidak terbaca | Pastikan file dari versi terbaru `artisan_lite_ui.html` (v2) |
+| Tombol SC END / COOL tidak ada | Kamu pakai versi lama — download ulang `artisan_lite_ui.html` yang terbaru |
+| Gateway tidak merespons | Cek apakah HG553 sudah boot penuh dan USB-RS485 terpasang |
+>>>>>>> 1f79151 (feat(Sprint 6): Add Python WebSocket bridge (modbus_to_ws.py), integrate WS client in HTML UI, and update S6 documentation)
