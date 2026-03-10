@@ -134,11 +134,22 @@ def calculate_ror(history: list, window: int = 5) -> float:
 # ── Modbus Reader ──────────────────────────────────────────────────────────────
 async def read_register(client: AsyncModbusTcpClient, device_id: int, register: int, fc: int) -> Tuple[Optional[float], str]:
     """Read a single register from Modbus. Returns (value, status_message)."""
+    # Detect argument name (Pydroid/Older pymodbus uses 'unit', Newer uses 'slave')
+    # Use a dict for kwargs to handle version mismatch
+    kwargs = {"slave": device_id} if hasattr(client, 'read_input_registers') else {"unit": device_id}
+    # Actually, the method is on the client, let's just try both or check signature
+    # Most reliable way in async: try slave, fallback to unit if it fails with TypeError
     try:
         if fc == 4:
-            result = await client.read_input_registers(register, count=1, slave=device_id)
+            try:
+                result = await client.read_input_registers(register, count=1, slave=device_id)
+            except TypeError:
+                result = await client.read_input_registers(register, count=1, unit=device_id)
         elif fc == 3:
-            result = await client.read_holding_registers(register, count=1, slave=device_id)
+            try:
+                result = await client.read_holding_registers(register, count=1, slave=device_id)
+            except TypeError:
+                result = await client.read_holding_registers(register, count=1, unit=device_id)
         else:
             return None, "Invalid FC"
 
