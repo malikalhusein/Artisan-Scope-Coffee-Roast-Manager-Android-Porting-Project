@@ -40,9 +40,12 @@ except ImportError:
     print("       Jalankan: pip install pymodbus")
     sys.exit(1)
 
+try:
     import websockets
-    # For websockets 14+, serve moved, but keep simple for now
-    from websockets import serve as ws_serve
+    try:
+        from websockets.server import serve as ws_serve
+    except ImportError:
+        from websockets import serve as ws_serve
 except ImportError:
     print("ERROR: websockets tidak terinstall.")
     print("       Jalankan: pip install websockets")
