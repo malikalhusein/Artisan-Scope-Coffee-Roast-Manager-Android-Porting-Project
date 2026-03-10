@@ -123,24 +123,30 @@ def calculate_ror(history: list, window: int = 5) -> float:
     return round(delta_temp / delta_time_min, 1) if delta_time_min > 0 else 0.0
 
 # ── Modbus Reader ──────────────────────────────────────────────────────────────
-async def read_register(client: AsyncModbusTcpClient, device_id: int, register: int, fc: int) -> Optional[float]:
-    """Read a single register from Modbus and return raw value or None on error."""
+async def read_register(client: AsyncModbusTcpClient, device_id: int, register: int, fc: int) -> Tuple[Optional[float], str]:
+    """Read a single register from Modbus. Returns (value, status_message)."""
     try:
         if fc == 4:
             result = await client.read_input_registers(register, count=1, slave=device_id)
         elif fc == 3:
             result = await client.read_holding_registers(register, count=1, slave=device_id)
         else:
-            return None
+            return None, "Invalid FC"
 
-        if result is None or isinstance(result, ExceptionResponse) or (hasattr(result, "isError") and result.isError()):
-            return None
+        if result is None:
+            return None, "No response (Timeout)"
+        if isinstance(result, ExceptionResponse):
+            return None, f"Modbus Error: {result.original_code} ({result})"
+        if hasattr(result, "isError") and result.isError():
+            return None, f"Modbus Error: {result}"
+        
         if not hasattr(result, "registers") or len(result.registers) == 0:
-            return None
-        return float(result.registers[0])
+            return None, "Empty registers"
+        
+        return float(result.registers[0]), "OK"
     except Exception as e:
         log.debug(f"read_register(Dev={device_id}, Reg={register}, FC={fc}) error: {e}")
-        return None
+        return None, str(e)
 
 
 async def modbus_reader_loop(args):
@@ -179,8 +185,8 @@ async def modbus_reader_loop(args):
 
                 while client.connected and not state.simulate:
                     # Read ET & BT based on CURRENT CHANNELS (allow dynamic updates)
-                    et_raw = await read_register(client, CHANNELS[0]["device_id"], CHANNELS[0]["register"], CHANNELS[0]["fc"])
-                    bt_raw = await read_register(client, CHANNELS[1]["device_id"], CHANNELS[1]["register"], CHANNELS[1]["fc"])
+                    et_raw, et_status = await read_register(client, CHANNELS[0]["device_id"], CHANNELS[0]["register"], CHANNELS[0]["fc"])
+                    bt_raw, bt_status = await read_register(client, CHANNELS[1]["device_id"], CHANNELS[1]["register"], CHANNELS[1]["fc"])
 
                     if et_raw is not None and bt_raw is not None:
                         state.last_et = round(et_raw / CHANNELS[0]["div"], 1)
@@ -201,10 +207,12 @@ async def modbus_reader_loop(args):
                         log.info(f"[{state.sample_count:04d}] ET={state.last_et:.1f} BT={state.last_bt:.1f} ΔBT={state.last_ror_bt:.1f}")
                     else:
                         state.error_count += 1
-                        err_msg = f"Gagal baca: ET({'OK' if et_raw is not None else 'FAIL'}) BT({'OK' if bt_raw is not None else 'FAIL'})"
-                        log.warning(f"⚠️ {err_msg} (error #{state.error_count})")
-                        await broadcast({"type": "status", "connected": False, "message": err_msg})
-                        if state.error_count >= 5: break
+                        # Detailed error message for debugging
+                        detail = f"ET:{et_status} | BT:{bt_status}"
+                        err_msg = f"Modbus Read Failed (#{state.error_count})"
+                        log.warning(f"⚠️ {err_msg} -> {detail}")
+                        await broadcast({"type": "status", "connected": True, "message": detail})
+                        if state.error_count >= 10: break
 
                     await asyncio.sleep(args.sample)
             else:
