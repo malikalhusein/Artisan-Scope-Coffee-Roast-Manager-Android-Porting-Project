@@ -234,7 +234,8 @@
       border: 1px solid var(--border);
       position: relative;
       cursor: pointer;
-      box-shadow: inset 2px 2px 6px rgba(0, 0, 0, .5)
+      box-shadow: inset 2px 2px 6px rgba(0, 0, 0, .5);
+      touch-action: none;
     }
 
     #burner-fill {
@@ -1035,6 +1036,12 @@
                 <option value="big">Big-endian</option>
               </select>
             </div>
+            <div class="frow"><label>🔥 Burner Dev / Reg</label>
+              <div class="irow">
+                <input id="d-burn-dev" type="number" value="1" min="0" style="width:50px" />
+                <input id="d-burn-reg" type="number" value="2000" min="0" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1149,6 +1156,8 @@
       inputCodes: [4, 4, 3, 3, 3, 3, 3, 3, 3, 3],
       inputDivs: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0], // 0=none,1=÷10,2=÷100
       inputModes: ['C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+      burnerDev: 1,
+      burnerReg: 2000,
       wordorderLittle: true,
       sample: 1
     };
@@ -1270,6 +1279,14 @@
         thumb.style.bottom = (pct / 100 * (track.clientHeight - 10)) + 'px';
         lbl.textContent = burner;
         sbrn.textContent = burner;
+        if (isConnected && ws && ws.readyState === 1 && !isDemo) {
+          ws.send(JSON.stringify({
+            cmd: "write_register",
+            device_id: cfg.burnerDev,
+            register: cfg.burnerReg,
+            value: burner
+          }));
+        }
       }
 
       function fromY(clientY) {
@@ -1616,6 +1633,8 @@
       }
       cfg.wordorderLittle = (v('d-endian') === 'little');
       cfg.sample = +v('d-sample', 1);
+      cfg.burnerDev = +v('d-burn-dev', 1);
+      cfg.burnerReg = +v('d-burn-reg', 2000);
       const ymin = +v('y-min', 0), ymax = +v('y-max', 300), rmin = +v('yr-min', 0), rmax = +v('yr-max', 50);
       chart.options.scales.yT.min = ymin; chart.options.scales.yT.max = ymax;
       chart.options.scales.yR.min = rmin; chart.options.scales.yR.max = rmax;
@@ -1635,6 +1654,8 @@
         `modbuswsport = ${cfg.wsPort}`,
         `modbustimeout = ${cfg.timeout}`,
         `modbusretries = ${cfg.retries}`,
+        `modbusburnerdev = ${cfg.burnerDev}`,
+        `modbusburnerreg = ${cfg.burnerReg}`,
         `modbuswordorderLittle = ${cfg.wordorderLittle ? 1 : 0}`,
         // inputDeviceIds (10 channels), inputRegisters, inputCodes, inputDivs, inputModes
         `modbusinputids = [${cfg.inputDeviceIds.join(',')}]`,
@@ -1681,6 +1702,8 @@
         if (map['modbuswsport']) { sv('c-ws-port', map['modbuswsport']); cfg.wsPort = +map['modbuswsport']; }
         if (map['modbustimeout']) { sv('c-timeout', map['modbustimeout']); cfg.timeout = +map['modbustimeout']; }
         if (map['modbusretries']) { sv('c-retries', map['modbusretries']); cfg.retries = +map['modbusretries']; }
+        if (map['modbusburnerdev']) { sv('d-burn-dev', map['modbusburnerdev']); cfg.burnerDev = +map['modbusburnerdev']; }
+        if (map['modbusburnerreg']) { sv('d-burn-reg', map['modbusburnerreg']); cfg.burnerReg = +map['modbusburnerreg']; }
         const wo = map['modbuswordorderlittle'];
         if (wo) { sv('d-endian', wo === '1' || wo === 'true' ? 'little' : 'big'); cfg.wordorderLittle = (wo === '1' || wo === 'true'); }
         if (map['samplerate']) { sv('d-sample', map['samplerate']); cfg.sample = +map['samplerate']; }

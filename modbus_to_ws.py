@@ -98,6 +98,7 @@ class AppState:
     start_time: float = time.time()
     et_history: list = []
     bt_history: list = []
+    write_queue: asyncio.Queue = asyncio.Queue()
 
 state = AppState()
 
@@ -237,6 +238,25 @@ async def modbus_reader_loop(args):
                         await broadcast({"type": "status", "connected": True, "message": detail})
                         if state.error_count >= 10: break
 
+                    # Check for pending write commands
+                    while not state.write_queue.empty():
+                        w_dev, w_reg, w_val = await state.write_queue.get()
+                        log.info(f"📝 Writing to Modbus: Dev={w_dev}, Reg={w_reg}, Val={w_val} ...")
+                        try:
+                            # Use FC06 or FC16 based on value context (here we default to Write Single Register)
+                            res = await client.write_register(w_reg, w_val, slave=w_dev)
+                            if res.isError():
+                                log.error(f"❌ Write failed: {res}")
+                            else:
+                                log.info(f"✅ Write success!")
+                        except Exception as we:
+                            # Try 'unit' for older pymodbus
+                            try:
+                                await client.write_register(w_reg, w_val, unit=w_dev)
+                                log.info(f"✅ Write success (via unit)!")
+                            except:
+                                log.error(f"❌ Write exception: {we}")
+
                     await asyncio.sleep(args.sample)
             else:
                 log.warning(f"⚠️ Gagal konek {args.host}:{args.port}")
@@ -290,6 +310,11 @@ async def ws_handler(websocket):
                         CHANNELS[0].update(new_channels[0])
                         CHANNELS[1].update(new_channels[1])
                         log.info(f"Config updated: ET=Dev{CHANNELS[0]['device_id']} BT=Dev{CHANNELS[1]['device_id']}")
+                elif cmd == "write_register":
+                    w_dev = int(data.get("device_id", 1))
+                    w_reg = int(data.get("register", 0))
+                    w_val = int(data.get("value", 0))
+                    await state.write_queue.put((w_dev, w_reg, w_val))
                 elif cmd == "get_config":
                     await websocket.send(json.dumps({"type": "config", "channels": CHANNELS}))
             except: pass
